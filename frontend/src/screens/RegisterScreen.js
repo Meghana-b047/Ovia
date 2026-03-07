@@ -12,6 +12,8 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { apiFetch } from '../utils/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get('window');
 
@@ -64,12 +66,27 @@ export default function RegisterScreen({ navigation }) {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleRegister = () => {
-    if (validate()) {
-      // navigation.replace('Home');
-      alert(`🌸 Welcome, ${fullName}! Account created successfully.`);
+  const handleRegister = async () => {
+  if (validate()) {
+    try {
+      const data = await apiFetch('/api/v1/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({
+          full_name: fullName,
+          email,
+          age: parseInt(age),
+          password,
+          confirm_password: confirmPassword,
+        }),
+      });
+      await AsyncStorage.setItem('access_token', data.access_token);
+      await AsyncStorage.setItem('refresh_token', data.refresh_token);
+      navigation.replace(data.onboarding_complete ? 'Home' : 'Onboarding');
+    } catch (err) {
+      alert(err.detail || 'Registration failed');
     }
-  };
+  }
+};
 
   const renderInput = ({ label, value, onChangeText, placeholder, keyboardType = 'default', fieldKey, isPassword = false, showPass, toggleShow, icon }) => {
     const isFocused = focusedField === fieldKey;
@@ -123,11 +140,11 @@ export default function RegisterScreen({ navigation }) {
           {/* Form */}
           <Animated.View style={[styles.form, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
 
-            {renderInput({ label: 'Full Name', value: fullName, onChangeText: setFullName, placeholder: 'Enter your full name', fieldKey: 'fullName', icon: '👤' })}
-            {renderInput({ label: 'Email Address', value: email, onChangeText: setEmail, placeholder: 'Enter your email', keyboardType: 'email-address', fieldKey: 'email', icon: '✉️' })}
-            {renderInput({ label: 'Age', value: age, onChangeText: setAge, placeholder: 'Enter your age', keyboardType: 'numeric', fieldKey: 'age', icon: '🎂' })}
-            {renderInput({ label: 'Password', value: password, onChangeText: setPassword, placeholder: 'Create a password', fieldKey: 'password', isPassword: true, showPass: showPassword, toggleShow: () => setShowPassword(!showPassword), icon: '🔒' })}
-            {renderInput({ label: 'Confirm Password', value: confirmPassword, onChangeText: setConfirmPassword, placeholder: 'Re-enter your password', fieldKey: 'confirmPassword', isPassword: true, showPass: showConfirmPassword, toggleShow: () => setShowConfirmPassword(!showConfirmPassword), icon: '🔒' })}
+            {renderInput({ label: 'Full Name', value: fullName, onChangeText: setFullName, placeholder: 'Enter your full name', fieldKey: 'fullName'})}
+            {renderInput({ label: 'Email Address', value: email, onChangeText: setEmail, placeholder: 'Enter your email', keyboardType: 'email-address', fieldKey: 'email' })}
+            {renderInput({ label: 'Age', value: age, onChangeText: setAge, placeholder: 'Enter your age', keyboardType: 'numeric', fieldKey: 'age' })}
+            {renderInput({ label: 'Password', value: password, onChangeText: setPassword, placeholder: 'Create a password', fieldKey: 'password', isPassword: true, showPass: showPassword, toggleShow: () => setShowPassword(!showPassword) })}
+            {renderInput({ label: 'Confirm Password', value: confirmPassword, onChangeText: setConfirmPassword, placeholder: 'Re-enter your password', fieldKey: 'confirmPassword', isPassword: true, showPass: showConfirmPassword, toggleShow: () => setShowConfirmPassword(!showConfirmPassword)})}
 
             {/* Password strength */}
             {password.length > 0 && (

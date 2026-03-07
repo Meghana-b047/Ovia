@@ -69,12 +69,21 @@ export default function LoginScreen({ navigation }) {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleLogin = () => {
-    if (validate()) {
-      // navigation.replace('Home');
-      alert(`🌸 Welcome back!`);
+  const handleLogin = async () => {
+  if (validate()) {
+    try {
+      const data = await apiFetch('/api/v1/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      });
+      await AsyncStorage.setItem('access_token', data.access_token);
+      await AsyncStorage.setItem('refresh_token', data.refresh_token);
+      navigation.replace(data.onboarding_complete ? 'Home' : 'Onboarding');
+    } catch (err) {
+      alert(err.detail || 'Login failed');
     }
-  };
+  }
+};
 
   const renderInput = ({ label, value, onChangeText, placeholder, keyboardType = 'default', fieldKey, isPassword = false, icon }) => {
     const isFocused = focusedField === fieldKey;

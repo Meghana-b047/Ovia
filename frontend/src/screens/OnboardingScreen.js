@@ -6,12 +6,15 @@ import {
   TouchableOpacity,
   Dimensions,
   Animated,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get('window');
 
-// 🎨 Pink Color Palette
+const BASE_URL = 'http://localhost:8000'; // 🔁 change to your IP if testing on phone
+
 const COLORS = {
   lavenderBlush: '#FFE5EC',
   pastelPink: '#FFB3C6',
@@ -73,16 +76,26 @@ export default function OnboardingScreen({ navigation }) {
   const [answers, setAnswers] = useState({});
   const [selectedOption, setSelectedOption] = useState(QUESTIONS[0].defaultOption);
   const [scrollValue, setScrollValue] = useState(QUESTIONS[0].defaultValue || 28);
+  const [loading, setLoading] = useState(false);
 
+  // useNativeDriver must be false on web
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
   const question = QUESTIONS[currentStep];
   const progress = ((currentStep + 1) / QUESTIONS.length) * 100;
 
   const animateTransition = (callback) => {
-    Animated.timing(fadeAnim, { toValue: 0, duration: 180, useNativeDriver: true }).start(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 0,
+      duration: 180,
+      useNativeDriver: Platform.OS !== 'web',
+    }).start(() => {
       callback();
-      Animated.timing(fadeAnim, { toValue: 1, duration: 250, useNativeDriver: true }).start();
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 250,
+        useNativeDriver: Platform.OS !== 'web',
+      }).start();
     });
   };
 
@@ -91,9 +104,16 @@ export default function OnboardingScreen({ navigation }) {
     setAnswers({ ...answers, [question.id]: option });
   };
 
-  const handleContinue = () => {
-    setAnswers({ ...answers, [question.id]: question.type === 'cycle_picker' ? scrollValue : selectedOption });
+  const handleContinue = async () => {
+    // Save current step's answer
+    const updatedAnswers = {
+      ...answers,
+      [question.id]: question.type === 'cycle_picker' ? scrollValue : selectedOption,
+    };
+    setAnswers(updatedAnswers);
+
     if (currentStep < QUESTIONS.length - 1) {
+      // Not the last step — just go to next question
       animateTransition(() => {
         setCurrentStep(currentStep + 1);
         const next = QUESTIONS[currentStep + 1];
@@ -101,8 +121,41 @@ export default function OnboardingScreen({ navigation }) {
         setScrollValue(next.defaultValue || null);
       });
     } else {
-      // navigation.replace('Home');
-      navigation.replace('Register');
+      // Last step — submit to backend
+      setLoading(true);
+      try {
+        const token = await AsyncStorage.getItem('access_token');
+        const res = await fetch(`${BASE_URL}/api/v1/onboarding`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            cycle_length_option: updatedAnswers.cycle_length,
+            cycle_length_days: typeof updatedAnswers.cycle_length === 'number'
+              ? updatedAnswers.cycle_length
+              : scrollValue,
+            period_duration_option: updatedAnswers.period_duration,
+            period_duration_days: typeof updatedAnswers.period_duration === 'number'
+              ? updatedAnswers.period_duration
+              : 5,
+            last_period_option: updatedAnswers.last_period || 'Yesterday',
+            goal: updatedAnswers.goal || 'Track my cycle',
+          }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail || 'Failed to save');
+        }
+
+        navigation.replace('Register'); // 🔁 change to 'Home' when HomeScreen is ready
+      } catch (err) {
+        alert('Could not save onboarding data: ' + err.message);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -184,9 +237,9 @@ export default function OnboardingScreen({ navigation }) {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
 
-        {/* Decorative blobs */}
-        <View style={styles.blobTopRight} />
-        <View style={styles.blobBottomLeft} />
+        {/* Blobs — pointerEvents none so they never block clicks */}
+        <View style={styles.blobTopRight} pointerEvents="none" />
+        <View style={styles.blobBottomLeft} pointerEvents="none" />
 
         {/* Header */}
         <View style={styles.header}>
@@ -204,7 +257,7 @@ export default function OnboardingScreen({ navigation }) {
         </View>
 
         {/* Question content */}
-        <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
+        <Animated.View style={[styles.content, { opacity: fadeAnim }]} pointerEvents="box-none">
           <View style={styles.questionBlock}>
             <Text style={styles.questionTitle}>{question.title}</Text>
             <Text style={styles.questionSubtitle}>{question.subtitle}</Text>
@@ -216,9 +269,16 @@ export default function OnboardingScreen({ navigation }) {
         </Animated.View>
 
         {/* Continue button */}
-        <TouchableOpacity style={styles.continueBtn} onPress={handleContinue} activeOpacity={0.85}>
-          <Text style={styles.continueBtnText}>Continue</Text>
-          <Text style={styles.continueBtnArrow}>→</Text>
+        <TouchableOpacity
+          style={[styles.continueBtn, loading && { opacity: 0.7 }]}
+          onPress={handleContinue}
+          activeOpacity={0.85}
+          disabled={loading}
+        >
+          <Text style={styles.continueBtnText}>
+            {loading ? 'Saving...' : currentStep === QUESTIONS.length - 1 ? 'Finish' : 'Continue'}
+          </Text>
+          {!loading && <Text style={styles.continueBtnArrow}>→</Text>}
         </TouchableOpacity>
 
         {/* Dots */}
@@ -260,6 +320,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
     top: -60,
     right: -60,
+    zIndex: -1,
   },
   blobBottomLeft: {
     position: 'absolute',
@@ -270,12 +331,14 @@ const styles = StyleSheet.create({
     opacity: 0.35,
     bottom: 80,
     left: -50,
+    zIndex: -1,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 14,
+    zIndex: 1,
   },
   stepBadge: {
     backgroundColor: COLORS.pinkChampagne,
@@ -304,6 +367,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginBottom: 32,
     overflow: 'hidden',
+    zIndex: 1,
   },
   progressFill: {
     height: '100%',
@@ -312,6 +376,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+    zIndex: 1,
   },
   questionBlock: {
     marginBottom: 28,
@@ -448,6 +513,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.35,
     shadowRadius: 16,
     elevation: 8,
+    zIndex: 1,
   },
   continueBtnText: {
     color: COLORS.white,
@@ -465,6 +531,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     marginTop: 16,
+    zIndex: 1,
   },
   dot: {
     height: 6,
