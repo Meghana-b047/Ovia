@@ -13,9 +13,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+// ✅ Import shared user store from HomeScreen
+import { setUserName } from './HomeScreen';
+// ✅ Import shared email store from ProfileScreen
+import { setUserEmail } from './ProfileScreen';
+
 const { width, height } = Dimensions.get('window');
 
-// 🎨 Pink Color Palette
 const COLORS = {
   lavenderBlush: '#FFE5EC',
   pastelPink: '#FFB3C6',
@@ -40,16 +44,8 @@ export default function LoginScreen({ navigation }) {
 
   React.useEffect(() => {
     Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 500,
-        useNativeDriver: true,
-      }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 500, useNativeDriver: true }),
     ]).start();
   }, []);
 
@@ -84,19 +80,61 @@ export default function LoginScreen({ navigation }) {
     }
   }
 };
+/*
+  const handleLogin = () => {
+    if (validate()) {
+      // ✅ Derive a display name from the email (e.g. "maya@example.com" → "Maya")
+      // In a real app this would come from your backend/auth response
+      const emailPrefix = email.trim().split('@')[0];
+      const displayName = emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1).replace(/[._\-]/g, ' ');
 
-  const renderInput = ({ label, value, onChangeText, placeholder, keyboardType = 'default', fieldKey, isPassword = false, icon }) => {
+
+      setUserName(displayName);
+      setUserEmail(email.trim().toLowerCase());
+
+      // Navigate to Home and clear stack so back-button doesn't return to Login
+      navigation.replace('Home'); }  
+
+  const handleLogin = async () => {
+  if (validate()) {
+    try {
+      const data = await apiFetch('/api/v1/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      });
+      await AsyncStorage.setItem('access_token', data.access_token);
+      await AsyncStorage.setItem('refresh_token', data.refresh_token);
+      navigation.replace(data.onboarding_complete ? 'Home' : 'Onboarding');
+    } catch (err) {
+      alert(err.detail || 'Login failed');
+
+    }
+  }
+}; */ 
+
+  const renderInput = ({
+    label, value, onChangeText, placeholder,
+    keyboardType = 'default', fieldKey,
+    isPassword = false, icon,
+  }) => {
     const isFocused = focusedField === fieldKey;
     const hasError = !!errors[fieldKey];
     return (
       <View style={styles.inputGroup}>
         <Text style={styles.inputLabel}>{label}</Text>
-        <View style={[styles.inputWrapper, isFocused && styles.inputWrapperFocused, hasError && styles.inputWrapperError]}>
+        <View style={[
+          styles.inputWrapper,
+          isFocused && styles.inputWrapperFocused,
+          hasError && styles.inputWrapperError,
+        ]}>
           <Text style={styles.inputIcon}>{icon}</Text>
           <TextInput
             style={styles.input}
             value={value}
-            onChangeText={(text) => { onChangeText(text); if (errors[fieldKey]) setErrors({ ...errors, [fieldKey]: null }); }}
+            onChangeText={(text) => {
+              onChangeText(text);
+              if (errors[fieldKey]) setErrors({ ...errors, [fieldKey]: null });
+            }}
             placeholder={placeholder}
             placeholderTextColor={COLORS.pastelPink}
             keyboardType={keyboardType}
@@ -119,8 +157,11 @@ export default function LoginScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           {/* Blobs */}
           <View style={styles.blobTopRight} />
           <View style={styles.blobBottomLeft} />
@@ -141,8 +182,16 @@ export default function LoginScreen({ navigation }) {
           {/* Form */}
           <Animated.View style={[styles.form, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
 
-            {renderInput({ label: 'Email Address', value: email, onChangeText: setEmail, placeholder: 'Enter your email', keyboardType: 'email-address', fieldKey: 'email', icon: '✉️' })}
-            {renderInput({ label: 'Password', value: password, onChangeText: setPassword, placeholder: 'Enter your password', fieldKey: 'password', isPassword: true, icon: '🔒' })}
+            {renderInput({
+              label: 'Email Address', value: email, onChangeText: setEmail,
+              placeholder: 'Enter your email', keyboardType: 'email-address',
+              fieldKey: 'email', icon: '✉️',
+            })}
+            {renderInput({
+              label: 'Password', value: password, onChangeText: setPassword,
+              placeholder: 'Enter your password', fieldKey: 'password',
+              isPassword: true, icon: '🔒',
+            })}
 
             {/* Forgot password */}
             <TouchableOpacity style={styles.forgotBtn} onPress={() => alert('Forgot Password coming soon!')}>

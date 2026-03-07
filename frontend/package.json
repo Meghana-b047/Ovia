@@ -1,7 +1,7 @@
 {
   "name": "trackerapp",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "expo/AppEntry",
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
@@ -22,7 +22,15 @@
     "react-native-gesture-handler": "~2.28.0",
     "react-native-safe-area-context": "~5.6.2",
     "react-native-screens": "~4.16.0",
+<<<<<<< HEAD
     "react-native-web": "^0.21.0"
+=======
+<<<<<<< HEAD:ovia/package.json
+    "react-native-svg": "15.12.1"
+=======
+    "react-native-web": "^0.21.0"
+>>>>>>> 22be4ce (connect frontend and backend):frontend/package.json
+>>>>>>> backend
   },
   "private": true
 }

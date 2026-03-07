@@ -1,3 +1,13 @@
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+node_modules/
+ovia/node_modules/
+frontend/node_modules/
+*/node_modules/
+.expo/
+=======
+>>>>>>> backend
 .venv/
 *__pycache__/
 *.pyc
@@ -10,4 +20,9 @@
 .DS_Store
 .idea/
 .vscode/    
+<<<<<<< HEAD
 *__pycache__ 
+=======
+*__pycache__ 
+>>>>>>> 22be4ce (connect frontend and backend)
+>>>>>>> backend
