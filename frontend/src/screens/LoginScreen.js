@@ -65,6 +65,7 @@ export default function LoginScreen({ navigation }) {
     return Object.keys(newErrors).length === 0;
   };
 
+<<<<<<< HEAD:ovia/src/screens/LoginScreen.js
   const handleLogin = () => {
     if (validate()) {
       // ✅ Derive a display name from the email (e.g. "maya@example.com" → "Maya")
@@ -77,8 +78,23 @@ export default function LoginScreen({ navigation }) {
 
       // Navigate to Home and clear stack so back-button doesn't return to Login
       navigation.replace('Home');
+=======
+  const handleLogin = async () => {
+  if (validate()) {
+    try {
+      const data = await apiFetch('/api/v1/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      });
+      await AsyncStorage.setItem('access_token', data.access_token);
+      await AsyncStorage.setItem('refresh_token', data.refresh_token);
+      navigation.replace(data.onboarding_complete ? 'Home' : 'Onboarding');
+    } catch (err) {
+      alert(err.detail || 'Login failed');
+>>>>>>> 22be4ce (connect frontend and backend):frontend/src/screens/LoginScreen.js
     }
-  };
+  }
+};
 
   const renderInput = ({
     label, value, onChangeText, placeholder,

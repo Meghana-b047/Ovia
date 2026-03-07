@@ -1,5 +1,21 @@
+<<<<<<< HEAD
 node_modules/
 ovia/node_modules/
 frontend/node_modules/
 */node_modules/
 .expo/
+=======
+.venv/
+*__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+*.log
+*.env
+.DS_Store
+.idea/
+.vscode/    
+*__pycache__ 
+>>>>>>> 22be4ce (connect frontend and backend)
