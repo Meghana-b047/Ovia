@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from typing import Optional
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, func
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, func, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.session import Base
@@ -24,7 +24,7 @@ class SleepLog(Base):
     )
 
     # Log date
-    log_date: Mapped[date] = mapped_column(Date, nullable=False)
+    log_date: Mapped[date] = mapped_column(String, nullable=False)
 
     # Sleep duration
     hours: Mapped[int] = mapped_column(Integer, default=0)

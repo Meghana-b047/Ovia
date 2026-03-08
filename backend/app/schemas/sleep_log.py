@@ -1,14 +1,15 @@
 from pydantic import BaseModel
+from datetime import date
 
 
 class SleepLogRequest(BaseModel):
-    log_date: str   # YYYY-MM-DD
+    log_date: date   # YYYY-MM-DD
     hours: int
     minutes: int = 0
 
 
 class SleepLogResponse(BaseModel):
-    log_date: str
+    log_date: date
     hours: int
     minutes: int
 
