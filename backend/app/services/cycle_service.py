@@ -268,3 +268,32 @@ def _to_response(log: CycleLog) -> CycleLogResponse:
         predicted_ovulation_date=log.predicted_ovulation_date,
         cycle_length_days=log.cycle_length_days,
     )
+
+def _compute_cycle_status(last_period: date, cycle_length: int, period_duration: int) -> dict:
+    today = date.today()
+    days_since = (today - last_period).days
+    cycle_day = (days_since % cycle_length) + 1
+    cycle_start = last_period + timedelta(days=(days_since // cycle_length) * cycle_length)
+
+    ovulation_day_num = cycle_length - 14
+    fertile_start_num = ovulation_day_num - 3
+    fertile_end_num = ovulation_day_num + 1
+
+    if cycle_day <= period_duration:
+        phase = "Menstruation"
+    elif cycle_day <= 13:
+        phase = "Follicular"
+    elif cycle_day <= ovulation_day_num + 1:
+        phase = "Ovulation"
+    else:
+        phase = "Luteal"
+
+    return {
+        "cycle_day": cycle_day,
+        "cycle_total": cycle_length,
+        "phase": phase,
+        "next_period_date": str(cycle_start + timedelta(days=cycle_length)),
+        "fertile_window_start": str(cycle_start + timedelta(days=fertile_start_num - 1)),
+        "fertile_window_end": str(cycle_start + timedelta(days=fertile_end_num - 1)),
+        "ovulation_date": str(cycle_start + timedelta(days=ovulation_day_num - 1)),
+    }
