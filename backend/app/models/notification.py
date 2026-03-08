@@ -41,8 +41,7 @@ class Notification(Base):
         server_default=func.now()
     )
 
-    # Relationship
-    user = relationship("User", back_populates="notifications")
+
 
     def __repr__(self) -> str:
         return f"<Notification user_id={self.user_id} type={self.type} read={self.read}>"

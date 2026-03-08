@@ -40,8 +40,6 @@ class SocialPost(Base):
         server_default=func.now(),
     )
 
-    # Relationship
-    user = relationship("User", back_populates="social_posts")
 
     def __repr__(self) -> str:
         return f"<SocialPost user_id={self.user_id} category={self.category} likes={self.likes}>"

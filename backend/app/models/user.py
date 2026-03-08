@@ -34,8 +34,8 @@ class User(Base):
     )
 
     # Relationships
-    onboarding_profile = relationship("OnboardingProfile", back_populates="user", uselist=False)
+    '''onboarding_profile = relationship("OnboardingProfile", back_populates="user", uselist=False)
     cycle_logs = relationship("CycleLog", back_populates="user")
-
+'''
     def __repr__(self) -> str:
         return f"<User id={self.id} email={self.email}>"

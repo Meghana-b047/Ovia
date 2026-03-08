@@ -41,8 +41,7 @@ class Reminder(Base):
         server_default=func.now()
     )
 
-    # Relationship
-    user = relationship("User", back_populates="reminders")
+
 
     def __repr__(self) -> str:
         return f"<Reminder user_id={self.user_id} title='{self.title}' time={self.time}>"

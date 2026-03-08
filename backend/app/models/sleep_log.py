@@ -37,8 +37,7 @@ class SleepLog(Base):
         onupdate=func.now(),
     )
 
-    # Relationship
-    user = relationship("User", back_populates="sleep_logs")
+    
 
     def __repr__(self) -> str:
         return f"<SleepLog user_id={self.user_id} date={self.log_date} sleep={self.hours}h {self.minutes}m>"

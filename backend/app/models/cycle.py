@@ -42,8 +42,7 @@ class CycleLog(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    # Relationship
-    user = relationship("User", back_populates="cycle_logs")
+
 
     def __repr__(self) -> str:
         return f"<CycleLog user_id={self.user_id} start={self.period_start_date}>"

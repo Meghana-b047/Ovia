@@ -38,8 +38,6 @@ class OnboardingProfile(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    # Relationship
-    user = relationship("User", back_populates="onboarding_profile")
 
     def __repr__(self) -> str:
         return f"<OnboardingProfile user_id={self.user_id} goal={self.goal}>"

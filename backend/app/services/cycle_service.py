@@ -115,18 +115,18 @@ class CyclePredictionEngine:
 
 # ── Service functions ─────────────────────────────────────────────────────────
 
-async def log_cycle(
+def log_cycle(
     user: User, data: CycleLogRequest, db: AsyncSession
 ) -> CycleLogResponse:
     # Fetch onboarding defaults for prediction fallback
-    ob_result = await db.execute(
-        select(OnboardingProfile).where(OnboardingProfile.user_id == user.id)
+    ob_result = db.execute(
+        db.query(OnboardingProfile).where(OnboardingProfile.user_id == user.id)
     )
     onboarding = ob_result.scalar_one_or_none()
 
     # Fetch previous logs for prediction
-    logs_result = await db.execute(
-        select(CycleLog)
+    logs_result =  db.execute(
+        db.query(CycleLog)
         .where(CycleLog.user_id == user.id)
         .order_by(CycleLog.period_start_date)
     )
@@ -156,16 +156,16 @@ async def log_cycle(
         cycle_length_days=predictions["cycle_length"],
     )
     db.add(log)
-    await db.commit()
-    await db.refresh(log)
+    db.commit()
+    db.refresh(log)
     return _to_response(log)
 
 
-async def update_cycle_log(
+def update_cycle_log(
     user: User, log_id: int, data: CycleLogUpdate, db: AsyncSession
 ) -> CycleLogResponse:
-    result = await db.execute(
-        select(CycleLog).where(CycleLog.id == log_id, CycleLog.user_id == user.id)
+    result =  db.execute(
+        db.query(CycleLog).where(CycleLog.id == log_id, CycleLog.user_id == user.id)
     )
     log = result.scalar_one_or_none()
     if not log:
@@ -182,16 +182,16 @@ async def update_cycle_log(
     if data.notes is not None:
         log.notes = data.notes
 
-    await db.commit()
-    await db.refresh(log)
+    db.commit()
+    db.refresh(log)
     return _to_response(log)
 
 
-async def get_cycle_history(
+def get_cycle_history(
     user: User, db: AsyncSession, limit: int = 12
 ) -> List[CycleLogResponse]:
-    result = await db.execute(
-        select(CycleLog)
+    result =  db.execute(
+        db.query(CycleLog)
         .where(CycleLog.user_id == user.id)
         .order_by(desc(CycleLog.period_start_date))
         .limit(limit)
@@ -200,16 +200,16 @@ async def get_cycle_history(
     return [_to_response(log) for log in logs]
 
 
-async def get_current_phase(user: User, db: AsyncSession) -> CyclePhaseResponse:
+def get_current_phase(user: User, db: AsyncSession) -> CyclePhaseResponse:
     # Get onboarding profile
-    ob_result = await db.execute(
-        select(OnboardingProfile).where(OnboardingProfile.user_id == user.id)
+    ob_result = db.execute(
+        db.query(OnboardingProfile).where(OnboardingProfile.user_id == user.id)
     )
     onboarding = ob_result.scalar_one_or_none()
 
     # Get last cycle log
-    logs_result = await db.execute(
-        select(CycleLog)
+    logs_result = db.execute(
+        db.query(CycleLog)
         .where(CycleLog.user_id == user.id)
         .order_by(desc(CycleLog.period_start_date))
         .limit(1)

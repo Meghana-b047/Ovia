@@ -1,132 +1,48 @@
-from typing import Optional
-
-from fastapi import HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from google.oauth2 import id_token
-from google.auth.transport import requests as google_requests
-
-from app.core.config import settings
-from app.core.security import hash_password, verify_password, create_access_token, create_refresh_token, decode_token
+from sqlalchemy.orm import Session
+from fastapi import HTTPException
 from app.models.user import User
+from app.core.security import hash_password, verify_password, create_access_token, create_refresh_token
 from app.schemas.auth import RegisterRequest, LoginRequest, TokenResponse
 
 
-def _build_token_response(user: User) -> TokenResponse:
-    payload = {"sub": str(user.id), "email": user.email}
+def register_user(payload: RegisterRequest, db: Session) -> TokenResponse:
+    if payload.password != payload.confirm_password:
+        raise HTTPException(status_code=400, detail="Passwords do not match")
+    if db.query(User).filter(User.email == payload.email).first():
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    user = User(
+        full_name=payload.full_name,
+        email=payload.email,
+        hashed_password=hash_password(payload.password),
+        age=payload.age,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
     return TokenResponse(
-        access_token=create_access_token(payload),
-        refresh_token=create_refresh_token(payload),
+        access_token=create_access_token(user.id),
+        refresh_token=create_refresh_token(user.id),
         onboarding_complete=user.onboarding_complete,
     )
 
 
-async def register_user(data: RegisterRequest, db: AsyncSession) -> TokenResponse:
-    # Check duplicate email
-    result = await db.execute(select(User).where(User.email == data.email))
-    if result.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="An account with this email already exists",
-        )
+def login_user(payload: LoginRequest, db: Session) -> TokenResponse:
+    user = db.query(User).filter(User.email == payload.email).first()
+    if not user or not verify_password(payload.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
 
-    user = User(
-        full_name=data.full_name,
-        email=data.email,
-        age=data.age,
-        hashed_password=hash_password(data.password),
-        auth_provider="email",
+    return TokenResponse(
+        access_token=create_access_token(user.id),
+        refresh_token=create_refresh_token(user.id),
+        onboarding_complete=user.onboarding_complete,
     )
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
-    return _build_token_response(user)
 
 
-async def login_user(data: LoginRequest, db: AsyncSession) -> TokenResponse:
-    result = await db.execute(select(User).where(User.email == data.email))
-    user: Optional[User] = result.scalar_one_or_none()
-
-    if not user or not user.hashed_password:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password",
-        )
-    if not verify_password(data.password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password",
-        )
-    if not user.is_active:
-        raise HTTPException(status_code=400, detail="Account is deactivated")
-
-    return _build_token_response(user)
-
-
-async def google_auth(id_token_str: str, db: AsyncSession) -> TokenResponse:
-    """
-    Verify Google ID token from the mobile client (Expo Google Sign-In),
-    then find-or-create the user.
-    """
-    try:
-        google_info = id_token.verify_oauth2_token(
-            id_token_str,
-            google_requests.Request(),
-            settings.GOOGLE_CLIENT_ID,
-        )
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid Google token: {str(e)}",
-        )
-
-    google_id = google_info["sub"]
-    email = google_info.get("email", "")
-    full_name = google_info.get("name", "Ovia User")
-
-    # Try find by google_id first, then by email
-    result = await db.execute(select(User).where(User.google_id == google_id))
-    user: Optional[User] = result.scalar_one_or_none()
-
-    if not user:
-        result = await db.execute(select(User).where(User.email == email))
-        user = result.scalar_one_or_none()
-
-    if user:
-        # Merge google_id if missing
-        if not user.google_id:
-            user.google_id = google_id
-            user.auth_provider = "google"
-            await db.commit()
-            await db.refresh(user)
-    else:
-        # Create new user via Google
-        user = User(
-            full_name=full_name,
-            email=email,
-            google_id=google_id,
-            auth_provider="google",
-            is_verified=True,   # Google accounts are pre-verified
-        )
-        db.add(user)
-        await db.commit()
-        await db.refresh(user)
-
-    return _build_token_response(user)
-
-
-async def refresh_access_token(refresh_token: str, db: AsyncSession) -> TokenResponse:
-    payload = decode_token(refresh_token)
-    if not payload or payload.get("type") != "refresh":
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired refresh token",
-        )
-
-    result = await db.execute(select(User).where(User.id == int(payload["sub"])))
-    user: Optional[User] = result.scalar_one_or_none()
-
-    if not user or not user.is_active:
-        raise HTTPException(status_code=401, detail="User not found or inactive")
-
-    return _build_token_response(user)
+def refresh_user_token(user: User) -> TokenResponse:
+    return TokenResponse(
+        access_token=create_access_token(user.id),
+        refresh_token=create_refresh_token(user.id),
+        onboarding_complete=user.onboarding_complete,
+    )

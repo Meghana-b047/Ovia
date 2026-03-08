@@ -37,8 +37,7 @@ class CalendarTask(Base):
         server_default=func.now(),
     )
 
-    # Relationship
-    user = relationship("User", back_populates="calendar_tasks")
+
 
     def __repr__(self) -> str:
         return f"<CalendarTask user_id={self.user_id} date={self.task_date} done={self.done}>"

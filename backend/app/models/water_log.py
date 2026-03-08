@@ -36,8 +36,7 @@ class WaterLog(Base):
         onupdate=func.now(),
     )
 
-    # Relationship
-    user = relationship("User", back_populates="water_logs")
+
 
     def __repr__(self) -> str:
         return f"<WaterLog user_id={self.user_id} date={self.log_date} glasses={self.glasses}>"

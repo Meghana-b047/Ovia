@@ -37,8 +37,7 @@ class SymptomLog(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    # Relationship
-    user = relationship("User", back_populates="symptom_logs")
+
 
     def __repr__(self) -> str:
         return f"<SymptomLog user_id={self.user_id} date={self.log_date}>"

@@ -1,6 +1,6 @@
 from datetime import date
 from typing import List, Optional, Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 FlowIntensity = Literal["light", "medium", "heavy"]
@@ -11,10 +11,19 @@ FlowIntensity = Literal["light", "medium", "heavy"]
 class CycleLogRequest(BaseModel):
     period_start_date: date
     period_end_date: Optional[date] = None
-    flow_intensity: Optional[FlowIntensity] = None
-    symptoms: Optional[List[str]] = Field(default=None, examples=[["cramps", "bloating", "headache"]])
-    mood: Optional[str] = Field(default=None, max_length=30)
-    notes: Optional[str] = Field(default=None, max_length=1000)
+    flow_intensity: Optional[str] = None
+    symptoms: Optional[List[str]] = []
+    mood: Optional[str] = None
+    notes: Optional[str] = None
+
+    @field_validator('symptoms', mode='before')
+    @classmethod
+    def parse_symptoms(cls, v):
+        if isinstance(v, list):
+            return v
+        if isinstance(v, str):
+            return [s.strip() for s in v.split(',') if s.strip()]
+        return []
 
 
 # ── Update an existing log (e.g. add end date later) ─────────────────────────
@@ -31,16 +40,21 @@ class CycleLogUpdate(BaseModel):
 
 class CycleLogResponse(BaseModel):
     id: int
-    user_id: int
     period_start_date: date
     period_end_date: Optional[date]
     flow_intensity: Optional[str]
-    symptoms: Optional[List[str]]
+    symptoms: Optional[List[str]]   # returns as list to frontend
     mood: Optional[str]
     notes: Optional[str]
-    predicted_next_period: Optional[date]
-    predicted_ovulation_date: Optional[date]
-    cycle_length_days: Optional[int]
+
+    @field_validator('symptoms', mode='before')
+    @classmethod
+    def parse_symptoms(cls, v):
+        if isinstance(v, list):
+            return v
+        if isinstance(v, str) and v:
+            return [s.strip() for s in v.split(',') if s.strip()]
+        return []
 
     model_config = {"from_attributes": True}
 

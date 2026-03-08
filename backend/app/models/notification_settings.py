@@ -47,8 +47,7 @@ class NotificationSettings(Base):
         onupdate=func.now(),
     )
 
-    # Relationship
-    user = relationship("User", back_populates="notification_settings")
+    # Relationshi
 
     def __repr__(self) -> str:
         return f"<NotificationSettings user_id={self.user_id}>"

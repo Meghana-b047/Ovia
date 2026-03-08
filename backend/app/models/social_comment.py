@@ -40,9 +40,6 @@ class SocialComment(Base):
         server_default=func.now(),
     )
 
-    # Relationships
-    user = relationship("User", back_populates="social_comments")
-    post = relationship("SocialPost", back_populates="comments")
 
     def __repr__(self) -> str:
         return f"<SocialComment post_id={self.post_id} user_id={self.user_id}>"
