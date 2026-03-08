@@ -1,62 +1,54 @@
-import sys, os 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+"""
+Ovia Backend — FastAPI Application
+===================================
+Serves the API for:
+  • CalendarScreen  → /tasks  + /cycle
+  • ExerciseScreen  → /exercises/modules  + /exercises/categories
+  • ExerciseDetailScreen → /exercises/modules/{id}/videos + /exercises/progress
+  • Auth            → /auth/register  /auth/login  /auth/me
+
+Run locally:
+    uvicorn main:app --reload --port 8000
+
+Interactive docs:
+    http://localhost:8000/docs
+"""
 
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 
-from app.core.config import settings
-from app.api.v1.router import api_router
-from app.db.session import engine, Base
+from core.database import init_db
+from middleware.cors import add_cors
+from routers import auth, tasks, cycle, exercises
 
-# Import all models so Alembic/SQLAlchemy can detect them
-from app.models import user, onboarding, cycle  # noqa: F401
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # On startup: create tables (dev only — use Alembic in production)
-    if settings.APP_ENV == "development":
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
+    # ── Startup ──
+    await init_db()
     yield
-    # On shutdown: dispose DB engine
-    await engine.dispose()
+    # ── Shutdown ── (nothing to clean up for SQLite)
 
 
 app = FastAPI(
-    title=f"{settings.APP_NAME} API",
-    description="Backend for the Ovia FemTech app — cycle tracking, onboarding, auth, and more.",
+    title="Ovia API",
+    description="Backend for CalendarScreen, ExerciseScreen, and ExerciseDetailScreen",
     version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
     lifespan=lifespan,
 )
 
-# ── CORS ──────────────────────────────────────────────────────────────────────
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[settings.FRONTEND_URL, "http://localhost:8081", "exp://"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# ── Middleware ────────────────────────────────────────────────────────────────
+add_cors(app)
 
-# ── Routes ────────────────────────────────────────────────────────────────────
-app.include_router(api_router)
+# ── Routers ───────────────────────────────────────────────────────────────────
+app.include_router(auth.router,       prefix="/api/v1")
+app.include_router(tasks.router,      prefix="/api/v1")
+app.include_router(cycle.router,      prefix="/api/v1")
+app.include_router(exercises.router,  prefix="/api/v1")
 
 
-@app.get("/", tags=["Health"])
-async def root():
-    return {"status": "ok", "app": settings.APP_NAME, "version": "1.0.0"}
-
-
+# ── Health check ──────────────────────────────────────────────────────────────
 @app.get("/health", tags=["Health"])
-async def health_check():
-    return {"status": "healthy"}
-
-if __name__ == "__main__":
-    import sys
-    import uvicorn
-
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+async def health():
+    return {"status": "ok", "service": "ovia-api"}
