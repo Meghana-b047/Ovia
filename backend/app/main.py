@@ -1,54 +1,50 @@
-"""
-Ovia Backend — FastAPI Application
-===================================
-Serves the API for:
-  • CalendarScreen  → /tasks  + /cycle
-  • ExerciseScreen  → /exercises/modules  + /exercises/categories
-  • ExerciseDetailScreen → /exercises/modules/{id}/videos + /exercises/progress
-  • Auth            → /auth/register  /auth/login  /auth/me
+import sys, os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-Run locally:
-    uvicorn main:app --reload --port 8000
-
-Interactive docs:
-    http://localhost:8000/docs
-"""
-
-from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from app.api.v1.router import api_router
+from app.db.session import engine, Base
 
-from core.database import init_db
-from middleware.cors import add_cors
-from routers import auth, tasks, cycle, exercises
+# Register all models with SQLAlchemy before creating tables
+import app.models.user                  # noqa
+import app.models.onboarding            # noqa
+import app.models.cycle
+import app.models.symptom_log           # noqa
+import app.models.water_log             # noqa
+import app.models.sleep_log             # noqa
+import app.models.reminder              # noqa
+import app.models.notification          # noqa
+import app.models.notification_settings # noqa
+import app.models.social_post           # noqa
+import app.models.social_comment        # noqa
+import app.models.calendar_task         # noqa
 
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # ── Startup ──
-    await init_db()
-    yield
-    # ── Shutdown ── (nothing to clean up for SQLite)
-
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
-    title="Ovia API",
-    description="Backend for CalendarScreen, ExerciseScreen, and ExerciseDetailScreen",
+    title="Ovia Health API",
+    description="Backend for the Ovia period & women's health tracking app",
     version="1.0.0",
-    lifespan=lifespan,
 )
 
-# ── Middleware ────────────────────────────────────────────────────────────────
-add_cors(app)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# ── Routers ───────────────────────────────────────────────────────────────────
-app.include_router(auth.router,       prefix="/api/v1")
-app.include_router(tasks.router,      prefix="/api/v1")
-app.include_router(cycle.router,      prefix="/api/v1")
-app.include_router(exercises.router,  prefix="/api/v1")
+app.include_router(api_router)
 
 
-# ── Health check ──────────────────────────────────────────────────────────────
-@app.get("/health", tags=["Health"])
-async def health():
-    return {"status": "ok", "service": "ovia-api"}
+@app.get("/")
+def root():
+    return {"message": "Ovia API is running 🌸"}
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}

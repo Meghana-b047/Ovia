@@ -1,6 +1,6 @@
 from pydantic_settings import BaseSettings
 from functools import lru_cache
-
+import os 
 
 class Settings(BaseSettings):
     # Database — SQLite (file created automatically in project root)
@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     APP_NAME: str = "Ovia"
     APP_ENV: str = "development"
     FRONTEND_URL: str = "http://localhost:3000"
+
+    #YouTUbe API 
+    YOUTUBE_API_KEY: str = os.getenv("YOUTUBE_API_KEY", "")
+    YOUTUBE_SEARCH_URL: str = "https://www.googleapis.com/youtube/v3/search"
+    YOUTUBE_MAX_RESULTS: int = 5
 
     class Config:
         env_file = ".env"

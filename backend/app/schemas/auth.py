@@ -47,7 +47,7 @@ class RefreshTokenRequest(BaseModel):
 
 # ── User response (safe, no password) ────────────────────────────────────────
 
-class UserResponse(BaseModel):
+class UserProfileResponse(BaseModel):
     id: int
     full_name: str
     email: EmailStr
@@ -57,3 +57,9 @@ class UserResponse(BaseModel):
     onboarding_complete: bool
 
     model_config = {"from_attributes": True}
+
+# ------ Update Profile Request ─────────────────────────────────────────────────────────────
+
+class UpdateProfileRequest(BaseModel):
+    full_name: Optional[str] = Field(None, min_length=1, max_length=100)
+    age: Optional[int] = Field(None, ge=10, le=100)

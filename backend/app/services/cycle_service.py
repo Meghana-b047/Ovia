@@ -5,16 +5,19 @@ from typing import List, Optional
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
+from sqlalchemy.orm import Session
+from fastapi import HTTPException
 
 from app.models.user import User
 from app.models.cycle import CycleLog
 from app.models.onboarding import OnboardingProfile
-from app.schemas.cycle import (
-    CycleLogCreate,
+from app.schemas.cycle_log import (
+    CycleLogRequest,
     CycleLogUpdate,
     CycleLogResponse,
     CyclePhaseResponse,
 )
+
 
 
 # ── Cycle syncing tips (from research doc) ────────────────────────────────────
@@ -113,7 +116,7 @@ class CyclePredictionEngine:
 # ── Service functions ─────────────────────────────────────────────────────────
 
 async def log_cycle(
-    user: User, data: CycleLogCreate, db: AsyncSession
+    user: User, data: CycleLogRequest, db: AsyncSession
 ) -> CycleLogResponse:
     # Fetch onboarding defaults for prediction fallback
     ob_result = await db.execute(
@@ -297,3 +300,82 @@ def _compute_cycle_status(last_period: date, cycle_length: int, period_duration:
         "fertile_window_end": str(cycle_start + timedelta(days=fertile_end_num - 1)),
         "ovulation_date": str(cycle_start + timedelta(days=ovulation_day_num - 1)),
     }
+
+def get_cycle_status(user: User, db: Session) -> CyclePhaseResponse:
+    onboarding = db.query(OnboardingProfile).filter(OnboardingProfile.user_id == user.id).first()
+    cycle_length = onboarding.cycle_length_days if onboarding else 28
+    period_duration = onboarding.period_duration_days if onboarding else 5
+
+    last_log = (
+        db.query(CycleLog)
+        .filter(CycleLog.user_id == user.id)
+        .order_by(CycleLog.start_date.desc())
+        .first()
+    )
+    last_period = last_log.start_date if last_log else date.today() - timedelta(days=14)
+
+    return CyclePhaseResponse(**_compute_cycle_status(last_period, cycle_length, period_duration))
+
+def create_cycle_log(payload: CycleLogRequest, user: User, db: Session) -> CycleLog:
+    log = CycleLog(user_id=user.id, **payload.dict())
+    db.add(log)
+    db.commit()
+    db.refresh(log)
+    return log
+
+def _compute_cycle_status(last_period: date, cycle_length: int, period_duration: int) -> dict:
+    today = date.today()
+    days_since = (today - last_period).days
+    cycle_day = (days_since % cycle_length) + 1
+    cycle_start = last_period + timedelta(days=(days_since // cycle_length) * cycle_length)
+
+    ovulation_day_num = cycle_length - 14
+    fertile_start_num = ovulation_day_num - 3
+    fertile_end_num = ovulation_day_num + 1
+
+    if cycle_day <= period_duration:
+        phase = "Menstruation"
+    elif cycle_day <= 13:
+        phase = "Follicular"
+    elif cycle_day <= ovulation_day_num + 1:
+        phase = "Ovulation"
+    else:
+        phase = "Luteal"
+
+    return {
+        "cycle_day": cycle_day,
+        "cycle_total": cycle_length,
+        "phase": phase,
+        "next_period_date": str(cycle_start + timedelta(days=cycle_length)),
+        "fertile_window_start": str(cycle_start + timedelta(days=fertile_start_num - 1)),
+        "fertile_window_end": str(cycle_start + timedelta(days=fertile_end_num - 1)),
+        "ovulation_date": str(cycle_start + timedelta(days=ovulation_day_num - 1)),
+    }
+
+
+
+
+def create_cycle_log(payload: CycleLogRequest, user: User, db: Session) -> CycleLog:
+    log = CycleLog(user_id=user.id, **payload.dict())
+    db.add(log)
+    db.commit()
+    db.refresh(log)
+    return log
+
+
+def get_cycle_logs(user: User, db: Session, limit: int = 12) -> List[CycleLog]:
+    return (
+        db.query(CycleLog)
+        .filter(CycleLog.user_id == user.id)
+        .order_by(CycleLog.start_date.desc())
+        .limit(limit)
+        .all()
+    )
+
+
+def delete_cycle_log(log_id: int, user: User, db: Session) -> None:
+    log = db.query(CycleLog).filter(CycleLog.id == log_id, CycleLog.user_id == user.id).first()
+    if not log:
+        raise HTTPException(status_code=404, detail="Cycle log not found")
+    db.delete(log)
+    db.commit()
