@@ -4,15 +4,15 @@ from typing import List
 from app.db.session import get_db
 from app.core.dependencies import get_current_user
 from app.models.user import User
-from app.schemas.cycle_log import CycleLogRequest, CycleLogResponse, CycleStatusResponse
-from app.services.cycle_service import get_cycle_status, create_cycle_log, get_cycle_logs, delete_cycle_log
+from app.schemas.cycle_log import CycleLogRequest, CycleLogResponse, CycleStatusResponse, CyclePhaseResponse
+from app.services.cycle_service import get_cycle_history, log_cycle, get_current_phase, delete_cycle_log, update_cycle_log
 
 router = APIRouter(prefix="/cycle", tags=["Cycle"])
 
 
-@router.get("/status", response_model=CycleStatusResponse)
+@router.get("/status", response_model=CyclePhaseResponse)
 def cycle_status(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    return get_cycle_status(current_user, db)
+    return get_current_phase(current_user, db)
 
 
 @router.get("/logs", response_model=List[CycleLogResponse])
@@ -21,16 +21,16 @@ def list_cycle_logs(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return get_cycle_logs(current_user, db, limit)
+    return get_cycle_history(current_user, db, limit)
 
 
 @router.post("/logs", response_model=CycleLogResponse, status_code=201)
 def add_cycle_log(
     payload: CycleLogRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user)
 ):
-    return create_cycle_log(payload, current_user, db)
+    return log_cycle(current_user, payload, db)
 
 
 @router.delete("/logs/{log_id}", status_code=204)
