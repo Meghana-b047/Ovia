@@ -8,7 +8,7 @@ FlowIntensity = Literal["light", "medium", "heavy"]
 
 # ── Log a new period ──────────────────────────────────────────────────────────
 
-class CycleLogCreate(BaseModel):
+class CycleLogRequest(BaseModel):
     period_start_date: date
     period_end_date: Optional[date] = None
     flow_intensity: Optional[FlowIntensity] = None
@@ -55,3 +55,13 @@ class CyclePhaseResponse(BaseModel):
     predicted_ovulation_date: Optional[date]
     exercise_tip: str
     nutrition_tip: str
+
+
+class CycleStatusResponse(BaseModel):
+    cycle_day: int
+    cycle_total: int
+    phase: str
+    next_period_date: Optional[str]
+    fertile_window_start: Optional[str]
+    fertile_window_end: Optional[str]
+    ovulation_date: Optional[str]
